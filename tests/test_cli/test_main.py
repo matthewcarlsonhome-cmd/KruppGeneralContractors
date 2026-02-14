@@ -118,3 +118,85 @@ class TestCLI:
         assert result.exit_code == 0
         assert "list" in result.output
         assert "add" in result.output
+
+
+class TestPhase1CLIHelp:
+    """All 6 Phase 1 skill commands show help text."""
+
+    def test_daily_report_help(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["daily-report", "--help"])
+        assert result.exit_code == 0
+        assert "--project" in result.output
+        assert "--notes" in result.output
+        assert "--date" in result.output
+
+    def test_daily_report_missing_args(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["daily-report"])
+        assert result.exit_code != 0
+        assert "missing" in result.output.lower() or "required" in result.output.lower()
+
+    def test_rfi_help(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["rfi", "--help"])
+        assert result.exit_code == 0
+        assert "--project" in result.output
+        assert "--issue" in result.output
+        assert "--priority" in result.output
+
+    def test_rfi_missing_args(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["rfi"])
+        assert result.exit_code != 0
+
+    def test_minutes_help(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["minutes", "--help"])
+        assert result.exit_code == 0
+        assert "--project" in result.output
+        assert "--type" in result.output
+        assert "--notes" in result.output
+
+    def test_minutes_missing_args(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["minutes"])
+        assert result.exit_code != 0
+
+    def test_client_update_help(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["client-update", "--help"])
+        assert result.exit_code == 0
+        assert "--project" in result.output
+        assert "--notes" in result.output
+        assert "--period" in result.output
+
+    def test_client_update_missing_args(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["client-update"])
+        assert result.exit_code != 0
+
+    def test_safety_talk_help(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["safety-talk", "--help"])
+        assert result.exit_code == 0
+        assert "--topic" in result.output
+        assert "--project" in result.output
+        assert "--season" in result.output
+
+    def test_safety_talk_missing_args(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["safety-talk"])
+        assert result.exit_code != 0
+
+    def test_punch_list_help(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["punch-list", "--help"])
+        assert result.exit_code == 0
+        assert "--project" in result.output
+        assert "--notes" in result.output
+        assert "--area" in result.output
+
+    def test_punch_list_missing_args(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["punch-list"])
+        assert result.exit_code != 0
+
+    def test_all_commands_in_help(self, runner: CliRunner) -> None:
+        """All 6 skill commands appear in main help."""
+        result = runner.invoke(cli, ["--help"])
+        assert result.exit_code == 0
+        assert "daily-report" in result.output
+        assert "rfi" in result.output
+        assert "minutes" in result.output
+        assert "client-update" in result.output
+        assert "safety-talk" in result.output
+        assert "punch-list" in result.output
