@@ -1,7 +1,7 @@
 """KruppAI REST API — FastAPI backend.
 
 Exposes all 18 skills via REST endpoints.
-Deployment: Netlify Functions (serverless) or Railway (container).
+Deployment: Render (Docker container) or any ASGI host.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ app = FastAPI(
     description="AI-powered document generation for construction contractors",
 )
 
-# CORS for Netlify frontend
+# CORS — allow all for development, restrict in production
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Restrict in production
@@ -294,6 +294,16 @@ def get_settings() -> Settings:
         return Settings(_env_file=None)
 
 
+def _get_db_factory(settings: Settings):
+    """Return a callable that yields db connections for the AnthropicClient."""
+    from kruppai.core.database import get_db as _get_db
+
+    def factory():
+        return _get_db(settings)
+
+    return factory
+
+
 def _build_skill(skill_class: type, settings: Settings):
     """Instantiate a skill with all its dependencies.
 
@@ -306,7 +316,7 @@ def _build_skill(skill_class: type, settings: Settings):
 
     return skill_class(
         settings=settings,
-        api_client=AnthropicClient(settings),
+        api_client=AnthropicClient(settings, db_conn_factory=_get_db_factory(settings)),
         formatter=OutputFormatter(settings),
         context_manager=ContextManager(settings),
         knowledge_base=KnowledgeBase(settings),
@@ -375,6 +385,30 @@ async def health() -> dict:
         "version": "1.0.0",
         "database": "connected" if db_exists else "missing",
         "output_dir": str(settings.output_dir),
+    }
+
+
+@app.get("/api/v1/config-check")
+async def config_check() -> dict:
+    """Check configuration status — helps frontend show setup issues."""
+    settings = get_settings()
+    api_key = settings.anthropic_api_key or ""
+    has_key = bool(api_key and api_key != "sk-ant-api03-your-key-here")
+    db_exists = settings.db_path.exists()
+    issues: list[str] = []
+    if not has_key:
+        issues.append(
+            "Anthropic API key is not configured. Add ANTHROPIC_API_KEY=sk-ant-... to your .env file."
+        )
+    if not db_exists:
+        issues.append(
+            "Database not found. Run 'kruppai init' or restart the server."
+        )
+    return {
+        "api_key_configured": has_key,
+        "database_ready": db_exists,
+        "issues": issues,
+        "status": "ready" if (has_key and db_exists) else "needs_setup",
     }
 
 
@@ -518,6 +552,13 @@ async def execute_skill(
     if request.project_code and "project" not in params:
         params["project"] = request.project_code
 
+    # Check API key before attempting execution
+    if not settings.anthropic_api_key or settings.anthropic_api_key == "sk-ant-api03-your-key-here":
+        return SkillResponse(
+            success=False,
+            error="Anthropic API key is not configured. Add your key to the .env file and restart the server.",
+        )
+
     skill = _build_skill(skill_class, settings)
     try:
         result = skill.execute(**params)
@@ -526,7 +567,17 @@ async def execute_skill(
     except FileNotFoundError as exc:
         return SkillResponse(success=False, error=f"File not found: {exc}")
     except Exception as exc:
-        return SkillResponse(success=False, error=f"Execution error: {exc}")
+        error_msg = str(exc)
+        if "authentication" in error_msg.lower() or "api_key" in error_msg.lower():
+            error_msg = (
+                "API authentication failed. Please check that your ANTHROPIC_API_KEY "
+                "in the .env file is valid and has not expired."
+            )
+        elif "rate_limit" in error_msg.lower() or "429" in error_msg:
+            error_msg = "API rate limit reached. Please wait a moment and try again."
+        elif "CostLimitExceeded" in error_msg or "cost limit" in error_msg.lower():
+            error_msg = f"Cost limit reached: {exc}"
+        return SkillResponse(success=False, error=error_msg)
 
     return SkillResponse(
         success=True,
@@ -558,6 +609,13 @@ async def execute_skill_with_file(
     The uploaded file is written to a temporary location and its path is
     passed as the ``file`` parameter to the skill's ``execute()`` method.
     """
+    # Check API key before attempting execution
+    if not settings.anthropic_api_key or settings.anthropic_api_key == "sk-ant-api03-your-key-here":
+        return SkillResponse(
+            success=False,
+            error="Anthropic API key is not configured. Add your key to the .env file and restart the server.",
+        )
+
     skill_class = _resolve_skill_class(skill_name)
 
     # Parse JSON parameters from the form field
@@ -595,7 +653,15 @@ async def execute_skill_with_file(
     except FileNotFoundError as exc:
         return SkillResponse(success=False, error=f"File not found: {exc}")
     except Exception as exc:
-        return SkillResponse(success=False, error=f"Execution error: {exc}")
+        error_msg = str(exc)
+        if "authentication" in error_msg.lower() or "api_key" in error_msg.lower():
+            error_msg = (
+                "API authentication failed. Please check that your ANTHROPIC_API_KEY "
+                "in the .env file is valid and has not expired."
+            )
+        elif "rate_limit" in error_msg.lower() or "429" in error_msg:
+            error_msg = "API rate limit reached. Please wait a moment and try again."
+        return SkillResponse(success=False, error=error_msg)
 
     return SkillResponse(
         success=True,

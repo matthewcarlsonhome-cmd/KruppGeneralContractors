@@ -6,9 +6,10 @@ Settings hierarchy (highest priority first):
 3. Default values
 """
 
+import os
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,10 +23,30 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # API — also reads ANTHROPIC_API_KEY without prefix
+    # API key — reads KRUPPAI_ANTHROPIC_API_KEY or ANTHROPIC_API_KEY
     anthropic_api_key: str = ""
     default_model: str = "claude-sonnet-4-5-20250929"
     opus_model: str = "claude-opus-4-6"
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_api_key(cls, values: dict) -> dict:
+        """Read ANTHROPIC_API_KEY from env if prefixed version is empty."""
+        key = values.get("anthropic_api_key") or ""
+        if not key:
+            key = os.environ.get("ANTHROPIC_API_KEY", "")
+        if not key:
+            # Also try reading directly from .env file as fallback
+            env_path = Path(".env")
+            if env_path.exists():
+                for line in env_path.read_text().splitlines():
+                    line = line.strip()
+                    if line.startswith("ANTHROPIC_API_KEY=") and not line.startswith("#"):
+                        key = line.split("=", 1)[1].strip().strip("'\"")
+                        break
+        if key:
+            values["anthropic_api_key"] = key
+        return values
 
     # Paths
     db_path: Path = Path.home() / ".kruppai" / "kruppai.db"

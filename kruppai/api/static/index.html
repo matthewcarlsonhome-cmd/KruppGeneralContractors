@@ -3,23 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KruppAI - Construction Document Generator</title>
+    <title>KruppAI — Construction Document Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+
+    <!-- ================================================================== -->
+    <!-- SYSTEM ALERT BAR (API key missing, DB issue, etc.)                 -->
+    <!-- ================================================================== -->
+    <div class="system-alert" id="systemAlert" style="display:none;">
+        <div class="alert-content">
+            <svg class="alert-icon" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <span id="systemAlertText"></span>
+        </div>
+        <button class="alert-dismiss" id="alertDismiss" aria-label="Dismiss">&times;</button>
+    </div>
+
     <!-- ================================================================== -->
     <!-- HEADER                                                             -->
     <!-- ================================================================== -->
     <header class="app-header">
-        <div class="header-left">
+        <div class="header-brand">
             <div class="logo">
-                <span class="logo-icon">K</span>
-                <span class="logo-text">KruppAI</span>
+                <div class="logo-mark">K</div>
+                <div class="logo-words">
+                    <span class="logo-name">KruppAI</span>
+                    <span class="logo-tagline">Construction Document Generator</span>
+                </div>
             </div>
-            <span class="tagline">Construction Document Generator</span>
         </div>
-        <div class="header-right">
-            <span class="cost-badge" id="headerCostBadge" title="Today's API cost">$0.00 today</span>
+        <div class="header-project" id="headerProject">
+            <label class="project-label" for="activeProjectSelect">Active Project</label>
+            <div class="project-select-wrap">
+                <select id="activeProjectSelect" class="project-select">
+                    <option value="">-- No project selected --</option>
+                </select>
+            </div>
+        </div>
+        <div class="header-meta">
+            <div class="cost-chip" id="headerCost" title="Today's API usage cost">$0.00 today</div>
         </div>
     </header>
 
@@ -27,87 +54,212 @@
     <!-- NAVIGATION                                                         -->
     <!-- ================================================================== -->
     <nav class="app-nav">
-        <button class="nav-btn active" data-view="dashboard">
-            <span class="nav-icon">&#9632;</span>
-            Dashboard
-        </button>
-        <button class="nav-btn" data-view="skills">
-            <span class="nav-icon">&#9881;</span>
-            Skills
-        </button>
-        <button class="nav-btn" data-view="documents">
-            <span class="nav-icon">&#128196;</span>
-            Documents
-        </button>
-        <button class="nav-btn" data-view="projects">
-            <span class="nav-icon">&#127959;</span>
-            Projects
-        </button>
+        <div class="nav-inner">
+            <button class="nav-tab active" data-view="dashboard">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+                <span>Dashboard</span>
+            </button>
+            <button class="nav-tab" data-view="generate">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clip-rule="evenodd"/></svg>
+                <span>Generate Document</span>
+            </button>
+            <button class="nav-tab" data-view="documents">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>
+                <span>Documents</span>
+            </button>
+            <button class="nav-tab" data-view="projects">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V8a2 2 0 00-2-2h-5L9 4H4zm7 5a1 1 0 10-2 0v1H8a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd"/></svg>
+                <span>Projects</span>
+            </button>
+        </div>
     </nav>
 
     <!-- ================================================================== -->
-    <!-- MAIN CONTENT AREA                                                  -->
+    <!-- MAIN CONTENT                                                       -->
     <!-- ================================================================== -->
     <main class="app-main">
 
         <!-- ============================================================ -->
-        <!-- DASHBOARD VIEW                                               -->
+        <!-- DASHBOARD                                                    -->
         <!-- ============================================================ -->
         <section id="view-dashboard" class="view active">
-            <h1 class="view-title">Dashboard</h1>
 
-            <!-- Cost tracker -->
-            <div class="dashboard-cards">
-                <div class="dash-card cost-card">
-                    <h3>Today's Usage</h3>
-                    <div class="cost-bar-wrap">
-                        <div class="cost-bar" id="dailyCostBar">
-                            <div class="cost-bar-fill" id="dailyCostFill"></div>
+            <!-- Welcome state: no project selected -->
+            <div id="welcomeState" class="welcome-hero">
+                <div class="welcome-illustration">
+                    <div class="welcome-icon-ring">
+                        <div class="welcome-icon-inner">
+                            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" width="48" height="48">
+                                <rect x="8" y="20" width="32" height="24" rx="2"/>
+                                <path d="M16 20V14a8 8 0 0116 0v6"/>
+                                <path d="M4 44h40"/>
+                                <path d="M20 32h8M24 28v8"/>
+                            </svg>
                         </div>
-                        <span class="cost-label" id="dailyCostLabel">$0.00 / $5.00</span>
                     </div>
-                    <div class="cost-bar-wrap" style="margin-top: 12px;">
-                        <h3>This Month</h3>
-                        <div class="cost-bar" id="monthlyCostBar">
-                            <div class="cost-bar-fill monthly" id="monthlyCostFill"></div>
+                </div>
+                <h1 class="welcome-title">Welcome to KruppAI</h1>
+                <p class="welcome-subtitle">
+                    Your AI-powered construction document generator. Transform rough field notes,
+                    spreadsheets, and project data into professional documents in seconds.
+                </p>
+                <div class="welcome-steps">
+                    <div class="welcome-step">
+                        <div class="step-number">1</div>
+                        <div class="step-text">
+                            <strong>Create a Project</strong>
+                            <span>Set up your project with code, name, and client info</span>
                         </div>
-                        <span class="cost-label" id="monthlyCostLabel">$0.00 / $100.00</span>
+                    </div>
+                    <div class="welcome-step">
+                        <div class="step-number">2</div>
+                        <div class="step-text">
+                            <strong>Select a Skill</strong>
+                            <span>Choose from 18 document generation skills across 3 phases</span>
+                        </div>
+                    </div>
+                    <div class="welcome-step">
+                        <div class="step-number">3</div>
+                        <div class="step-text">
+                            <strong>Enter Your Notes</strong>
+                            <span>Paste your rough notes, upload files, or describe what you need</span>
+                        </div>
+                    </div>
+                    <div class="welcome-step">
+                        <div class="step-number">4</div>
+                        <div class="step-text">
+                            <strong>Download &amp; Distribute</strong>
+                            <span>Get a branded, professional DOCX or XLSX ready for your team</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-gold btn-xl" id="welcomeCreateBtn">
+                    Create Your First Project
+                </button>
+            </div>
+
+            <!-- Dashboard content: project selected -->
+            <div id="dashboardContent" style="display:none;">
+                <!-- Active project hero card -->
+                <div class="project-hero" id="projectHero"></div>
+
+                <!-- Cost metrics -->
+                <div class="metrics-row" id="metricsRow">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-label">Today's Usage</span>
+                            <span class="metric-value" id="dailyCostValue">$0.00</span>
+                        </div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" id="dailyCostFill" style="width:0%"></div>
+                        </div>
+                        <span class="metric-limit" id="dailyCostLimit">of $50.00 daily limit</span>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-label">This Month</span>
+                            <span class="metric-value" id="monthlyCostValue">$0.00</span>
+                        </div>
+                        <div class="metric-bar monthly">
+                            <div class="metric-bar-fill" id="monthlyCostFill" style="width:0%"></div>
+                        </div>
+                        <span class="metric-limit" id="monthlyCostLimit">of $300.00 monthly limit</span>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="section-header">
+                    <h2 class="section-heading">What would you like to do today?</h2>
+                    <p class="section-desc">Quick access to the most common document generation skills.</p>
+                </div>
+                <div class="quick-actions-grid" id="quickActions"></div>
+
+                <!-- Recent Documents -->
+                <div class="section-header">
+                    <h2 class="section-heading">Recent Documents</h2>
+                    <p class="section-desc">Your most recently generated documents for this project.</p>
+                </div>
+                <div class="recent-list" id="recentDocs">
+                    <div class="empty-state">
+                        <p>No documents generated yet. Choose a skill above to create your first document.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- GENERATE DOCUMENT (Skills)                                   -->
+        <!-- ============================================================ -->
+        <section id="view-generate" class="view">
+            <div class="view-header">
+                <h1 class="view-title">Generate Document</h1>
+                <p class="view-subtitle">
+                    Select a skill below to generate a professional construction document.
+                    Each skill uses AI to transform your input into a branded, ready-to-distribute document.
+                </p>
+            </div>
+
+            <!-- No project banner -->
+            <div id="noProjectBanner" class="no-project-banner" style="display:none;">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                    <strong>No project selected.</strong> Most skills require an active project.
+                    <a href="#" id="noProjectLink">Select or create a project first.</a>
+                </div>
+            </div>
+
+            <!-- Workflow overview -->
+            <div class="workflow-overview">
+                <h3 class="workflow-title">How Skills Work Together</h3>
+                <p class="workflow-desc">
+                    KruppAI skills are organized into three phases that mirror the construction project lifecycle.
+                    Documents from one skill can inform and feed into others, creating a connected project record.
+                </p>
+                <div class="workflow-phases">
+                    <div class="workflow-phase">
+                        <div class="workflow-phase-badge">1</div>
+                        <div class="workflow-phase-info">
+                            <strong>Field &amp; Communication</strong>
+                            <span>Daily operations: reports, RFIs, minutes, updates, safety, punch lists</span>
+                        </div>
+                    </div>
+                    <div class="workflow-arrow">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </div>
+                    <div class="workflow-phase">
+                        <div class="workflow-phase-badge phase-2">2</div>
+                        <div class="workflow-phase-info">
+                            <strong>Analysis &amp; Review</strong>
+                            <span>Estimates, bids, change orders, schedules, submittals, contracts</span>
+                        </div>
+                    </div>
+                    <div class="workflow-arrow">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </div>
+                    <div class="workflow-phase">
+                        <div class="workflow-phase-badge phase-3">3</div>
+                        <div class="workflow-phase-info">
+                            <strong>Strategic &amp; Institutional</strong>
+                            <span>Proposals, budgets, closeout, lessons, case studies, incidents</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Quick actions -->
-            <h2 class="section-title">Quick Actions</h2>
-            <div class="quick-actions" id="quickActions">
-                <!-- Populated by JS -->
-            </div>
-
-            <!-- Recent documents -->
-            <h2 class="section-title">Recent Documents</h2>
-            <div class="recent-docs" id="recentDocs">
-                <p class="empty-state">No documents generated yet. Use a skill above to get started.</p>
-            </div>
+            <!-- Skills container (populated by JS) -->
+            <div id="skillsContainer"></div>
         </section>
 
         <!-- ============================================================ -->
-        <!-- SKILLS VIEW                                                  -->
-        <!-- ============================================================ -->
-        <section id="view-skills" class="view">
-            <h1 class="view-title">Skills</h1>
-            <p class="view-subtitle">Select a skill to generate a construction document.</p>
-
-            <div id="skillsContainer">
-                <!-- Phase groups populated by JS -->
-            </div>
-        </section>
-
-        <!-- ============================================================ -->
-        <!-- DOCUMENTS VIEW                                               -->
+        <!-- DOCUMENTS                                                    -->
         <!-- ============================================================ -->
         <section id="view-documents" class="view">
-            <h1 class="view-title">Documents</h1>
-            <p class="view-subtitle">All generated documents.</p>
-
+            <div class="view-header">
+                <h1 class="view-title">Documents</h1>
+                <p class="view-subtitle">All documents generated by KruppAI. Click Download to retrieve any document.</p>
+            </div>
             <div class="table-wrap">
                 <table class="data-table" id="documentsTable">
                     <thead>
@@ -116,43 +268,59 @@
                             <th>Skill</th>
                             <th>File Name</th>
                             <th>Type</th>
-                            <th>Download</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody id="documentsBody">
-                        <tr>
-                            <td colspan="5" class="empty-state">No documents found.</td>
-                        </tr>
+                        <tr><td colspan="5" class="empty-state">No documents generated yet.</td></tr>
                     </tbody>
                 </table>
             </div>
         </section>
 
         <!-- ============================================================ -->
-        <!-- PROJECTS VIEW                                                -->
+        <!-- PROJECTS                                                     -->
         <!-- ============================================================ -->
         <section id="view-projects" class="view">
-            <h1 class="view-title">Projects</h1>
-            <p class="view-subtitle">Manage your construction projects.</p>
+            <div class="view-header">
+                <h1 class="view-title">Projects</h1>
+                <p class="view-subtitle">
+                    Create and manage your construction projects. Each project stores its own
+                    documents, action items, team data, and AI-generated records.
+                </p>
+            </div>
 
             <!-- Add project form -->
-            <div class="add-project-card">
-                <h3>Add New Project</h3>
+            <div class="card card-form">
+                <div class="card-header">
+                    <h3>Create New Project</h3>
+                    <p>Fill in the project details below. Fields marked with <span class="req">*</span> are required.</p>
+                </div>
                 <form id="addProjectForm" class="project-form">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="projCode">Project Code</label>
-                            <input type="text" id="projCode" name="project_code" placeholder="e.g. KRUPP-2026-001" required>
+                            <label for="projCode">
+                                Project Code <span class="req">*</span>
+                            </label>
+                            <input type="text" id="projCode" name="project_code"
+                                   placeholder="e.g. KRUPP-2026-001" required>
+                            <span class="field-hint">Unique identifier for this project (e.g. KRUPP-2026-001)</span>
                         </div>
                         <div class="form-group">
-                            <label for="projName">Project Name</label>
-                            <input type="text" id="projName" name="name" placeholder="e.g. Downtown Office Tower" required>
+                            <label for="projName">
+                                Project Name <span class="req">*</span>
+                            </label>
+                            <input type="text" id="projName" name="name"
+                                   placeholder="e.g. Downtown Office Tower" required>
+                            <span class="field-hint">Full project name as it appears on documents</span>
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="projClient">Client Name</label>
-                            <input type="text" id="projClient" name="client_name" placeholder="e.g. Acme Development Corp">
+                            <input type="text" id="projClient" name="client_name"
+                                   placeholder="e.g. Acme Development Corp">
+                            <span class="field-hint">Owner or client organization name</span>
                         </div>
                         <div class="form-group">
                             <label for="projType">Project Type</label>
@@ -167,18 +335,29 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group full-width">
-                            <label for="projAddress">Address</label>
-                            <input type="text" id="projAddress" name="address" placeholder="e.g. 123 Main St, Denver, CO 80202">
+                            <label for="projAddress">Project Address</label>
+                            <input type="text" id="projAddress" name="address"
+                                   placeholder="e.g. 123 Main St, Denver, CO 80202">
+                            <span class="field-hint">Physical job site address (used for weather data)</span>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-lg">Add Project</button>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-gold btn-lg">
+                            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+                            Create Project
+                        </button>
+                    </div>
                 </form>
             </div>
 
             <!-- Project list -->
-            <h2 class="section-title" style="margin-top: 32px;">Active Projects</h2>
+            <div class="section-header" style="margin-top:32px;">
+                <h2 class="section-heading">Active Projects</h2>
+            </div>
             <div id="projectsList" class="projects-grid">
-                <p class="empty-state">No projects found. Add one above.</p>
+                <div class="empty-state">
+                    <p>No projects yet. Create your first project above to get started.</p>
+                </div>
             </div>
         </section>
     </main>
@@ -193,15 +372,15 @@
                 <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body" id="modalBody">
-                <!-- Dynamic form injected by JS -->
+                <!-- Dynamic content injected by JS -->
             </div>
         </div>
     </div>
 
     <!-- ================================================================== -->
-    <!-- TOAST / NOTIFICATION                                               -->
+    <!-- TOAST NOTIFICATIONS                                                -->
     <!-- ================================================================== -->
-    <div class="toast-container" id="toastContainer"></div>
+    <div class="toast-stack" id="toastStack"></div>
 
     <script src="/static/app.js"></script>
 </body>
