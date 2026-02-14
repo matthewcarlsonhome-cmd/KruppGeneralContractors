@@ -320,6 +320,12 @@ SKILL_MENU = [
     ("10", "Schedule Analysis", "schedule-analysis", "Analyze schedule variance and risks"),
     ("11", "Submittal Status", "submittal-status", "Track submittals and flag overdue items"),
     ("12", "Contract Review", "contract-review", "Review a contract or insurance cert"),
+    ("13", "Proposal", "proposal", "Generate a project proposal"),
+    ("14", "Budget Forecast", "budget-forecast", "Analyze budget vs. actuals with projections"),
+    ("15", "Closeout Package", "closeout", "Assemble a project closeout checklist"),
+    ("16", "Lessons Learned", "lessons-learned", "Capture lessons from project experience"),
+    ("17", "Case Study", "case-study", "Build a marketing case study from project data"),
+    ("18", "Incident Report", "incident-report", "Document a safety incident or near miss"),
 ]
 
 
@@ -507,6 +513,97 @@ def quick(ctx: click.Context) -> None:
         ctx.invoke(
             contract_review, project=project_code, file=file_path,
             doc_type=doc_type,
+        )
+
+    elif command == "proposal":
+        client = click.prompt("Client name")
+        description = read_notes_input(None, "Describe the project opportunity")
+        if not description:
+            console.print("[red]No description provided.[/red]")
+            return
+        proposal_type = click.prompt(
+            "Proposal type",
+            type=click.Choice(["full", "letter", "qualification"]),
+            default="full",
+        )
+        rfp_path = click.prompt("Path to RFP document (or press Enter to skip)", default="", show_default=False)
+        ctx.invoke(
+            proposal, project=project_code, client=client,
+            description=description, proposal_type=proposal_type,
+            rfp_file=rfp_path or None,
+        )
+
+    elif command == "budget-forecast":
+        file_path = click.prompt("Path to job cost report (XLSX)")
+        notes = read_notes_input(None, "Any observations? (press Enter to skip)")
+        ctx.invoke(
+            budget_forecast, project=project_code, file=file_path,
+            notes=notes or None,
+        )
+
+    elif command == "closeout":
+        notes = read_notes_input(None, "Enter closeout status notes")
+        if not notes:
+            console.print("[red]No notes provided.[/red]")
+            return
+        mode = click.prompt(
+            "Mode",
+            type=click.Choice(["generate", "update"]),
+            default="generate",
+        )
+        ctx.invoke(
+            closeout, project=project_code, notes=notes, mode=mode,
+        )
+
+    elif command == "lessons-learned":
+        notes = read_notes_input(None, "Enter lessons learned session notes")
+        if not notes:
+            console.print("[red]No notes provided.[/red]")
+            return
+        mode = click.prompt(
+            "Mode",
+            type=click.Choice(["manual", "extract"]),
+            default="manual",
+        )
+        category = click.prompt(
+            "Focus category (or press Enter for all)",
+            default="", show_default=False,
+        )
+        ctx.invoke(
+            lessons_learned_cmd, project=project_code, notes=notes,
+            mode=mode, category=category or None,
+        )
+
+    elif command == "case-study":
+        notes = read_notes_input(None, "Enter project highlights for the case study")
+        if not notes:
+            console.print("[red]No notes provided.[/red]")
+            return
+        audience = click.prompt(
+            "Target audience",
+            type=click.Choice(["client", "marketing", "proposal"]),
+            default="marketing",
+        )
+        ctx.invoke(
+            case_study_cmd, project=project_code, notes=notes,
+            audience=audience,
+        )
+
+    elif command == "incident-report":
+        description = read_notes_input(None, "Describe what happened")
+        if not description:
+            console.print("[red]No description provided.[/red]")
+            return
+        inc_type = click.prompt(
+            "Incident type",
+            type=click.Choice(["near_miss", "first_aid", "recordable", "lost_time", "property_damage", "environmental"]),
+        )
+        inc_date = click.prompt("Date (YYYY-MM-DD, or Enter for today)", default="", show_default=False)
+        inc_time = click.prompt("Time (HH:MM, or Enter to skip)", default="", show_default=False)
+        ctx.invoke(
+            incident_report_cmd, project=project_code,
+            description=description, type=inc_type,
+            date=inc_date or None, time=inc_time or None,
         )
 
 
@@ -1001,6 +1098,247 @@ def contract_review(
         console.print(f"[red]Validation error:[/red] {e}")
     except Exception as e:
         console.print(f"[red]Error reviewing document:[/red] {e}")
+
+
+# =============================================================================
+# Phase 3 Skill Commands
+# =============================================================================
+
+
+@cli.command("proposal")
+@click.option("--project", "-p", default=None, help="Project code (optional)")
+@click.option("--client", "-c", required=True, help="Client name")
+@click.option("--description", "-d", required=True, help="Project description or opportunity notes")
+@click.option(
+    "--type", "-t", "proposal_type",
+    type=click.Choice(["full", "letter", "qualification"], case_sensitive=False),
+    default="full",
+    help="Proposal type",
+)
+@click.option("--rfp-file", default=None, help="Path to RFP document (optional)")
+@click.pass_context
+def proposal(
+    ctx: click.Context,
+    project: str | None,
+    client: str,
+    description: str,
+    proposal_type: str,
+    rfp_file: str | None,
+) -> None:
+    """Generate a project proposal using Opus for premium quality."""
+    from kruppai.skills.proposal_generator import ProposalGeneratorSkill
+
+    settings: Settings = ctx.obj["settings"]
+    skill = _build_skill(ProposalGeneratorSkill, settings)
+    try:
+        with console.status("[bold]Generating proposal (using Opus)..."):
+            result = skill.execute(
+                project=project, client=client, description=description,
+                proposal_type=proposal_type, rfp_file=rfp_file,
+            )
+        console.print(f"\n[green]Proposal generated:[/green] {result.output_path}")
+        console.print(
+            f"[dim]Cost: ${result.cost_cents / 100:.2f} | "
+            f"Tokens: {result.input_tokens:,} in / {result.output_tokens:,} out | "
+            f"Time: {result.duration_ms / 1000:.1f}s[/dim]"
+        )
+    except ValueError as e:
+        console.print(f"[red]Validation error:[/red] {e}")
+    except Exception as e:
+        console.print(f"[red]Error generating proposal:[/red] {e}")
+
+
+@cli.command("budget-forecast")
+@click.option("--project", "-p", required=True, help="Project code")
+@click.option("--file", "-f", "file", required=True, help="Path to job cost report (XLSX)")
+@click.option("--notes", "-n", default=None, help="PM observations")
+@click.pass_context
+def budget_forecast(
+    ctx: click.Context,
+    project: str,
+    file: str,
+    notes: str | None,
+) -> None:
+    """Generate a budget-to-actual variance report with projections."""
+    from kruppai.skills.budget_forecaster import BudgetForecasterSkill
+
+    settings: Settings = ctx.obj["settings"]
+    skill = _build_skill(BudgetForecasterSkill, settings)
+    try:
+        with console.status("[bold]Analyzing budget..."):
+            result = skill.execute(project=project, file=file, notes=notes)
+        console.print(f"\n[green]Budget forecast generated:[/green] {result.output_path}")
+        console.print("[dim]XLSX workbook also created.[/dim]")
+        console.print(
+            f"[dim]Cost: ${result.cost_cents / 100:.2f} | "
+            f"Tokens: {result.input_tokens:,} in / {result.output_tokens:,} out | "
+            f"Time: {result.duration_ms / 1000:.1f}s[/dim]"
+        )
+    except ValueError as e:
+        console.print(f"[red]Validation error:[/red] {e}")
+    except Exception as e:
+        console.print(f"[red]Error analyzing budget:[/red] {e}")
+
+
+@cli.command("closeout")
+@click.option("--project", "-p", required=True, help="Project code")
+@click.option("--notes", "-n", required=True, help="Closeout status notes")
+@click.option(
+    "--mode", "-m",
+    type=click.Choice(["generate", "update"], case_sensitive=False),
+    default="generate",
+    help="Generate new or update existing",
+)
+@click.pass_context
+def closeout(
+    ctx: click.Context,
+    project: str,
+    notes: str,
+    mode: str,
+) -> None:
+    """Assemble a project closeout package with checklist."""
+    from kruppai.skills.closeout_assembler import CloseoutAssemblerSkill
+
+    settings: Settings = ctx.obj["settings"]
+    skill = _build_skill(CloseoutAssemblerSkill, settings)
+    try:
+        with console.status("[bold]Assembling closeout package..."):
+            result = skill.execute(project=project, notes=notes, mode=mode)
+        console.print(f"\n[green]Closeout package generated:[/green] {result.output_path}")
+        console.print("[dim]XLSX tracking checklist also created.[/dim]")
+        console.print(
+            f"[dim]Cost: ${result.cost_cents / 100:.2f} | "
+            f"Tokens: {result.input_tokens:,} in / {result.output_tokens:,} out | "
+            f"Time: {result.duration_ms / 1000:.1f}s[/dim]"
+        )
+    except ValueError as e:
+        console.print(f"[red]Validation error:[/red] {e}")
+    except Exception as e:
+        console.print(f"[red]Error assembling closeout:[/red] {e}")
+
+
+@cli.command("lessons-learned")
+@click.option("--project", "-p", required=True, help="Project code")
+@click.option("--notes", "-n", required=True, help="Session notes or analysis guidance")
+@click.option(
+    "--mode", "-m",
+    type=click.Choice(["manual", "extract"], case_sensitive=False),
+    default="manual",
+    help="Manual (from notes) or extract (from project data)",
+)
+@click.option("--category", default=None, help="Focus category (optional)")
+@click.pass_context
+def lessons_learned_cmd(
+    ctx: click.Context,
+    project: str,
+    notes: str,
+    mode: str,
+    category: str | None,
+) -> None:
+    """Capture and structure lessons learned from project experience."""
+    from kruppai.skills.lessons_learned import LessonsLearnedSkill
+
+    settings: Settings = ctx.obj["settings"]
+    skill = _build_skill(LessonsLearnedSkill, settings)
+    try:
+        with console.status("[bold]Analyzing lessons learned..."):
+            result = skill.execute(
+                project=project, notes=notes, mode=mode, category=category,
+            )
+        console.print(f"\n[green]Lessons learned report generated:[/green] {result.output_path}")
+        console.print(
+            f"[dim]Cost: ${result.cost_cents / 100:.2f} | "
+            f"Tokens: {result.input_tokens:,} in / {result.output_tokens:,} out | "
+            f"Time: {result.duration_ms / 1000:.1f}s[/dim]"
+        )
+    except ValueError as e:
+        console.print(f"[red]Validation error:[/red] {e}")
+    except Exception as e:
+        console.print(f"[red]Error capturing lessons:[/red] {e}")
+
+
+@cli.command("case-study")
+@click.option("--project", "-p", required=True, help="Project code")
+@click.option("--notes", "-n", required=True, help="Project highlights for the case study")
+@click.option(
+    "--audience", "-a",
+    type=click.Choice(["client", "marketing", "proposal"], case_sensitive=False),
+    default="marketing",
+    help="Target audience",
+)
+@click.pass_context
+def case_study_cmd(
+    ctx: click.Context,
+    project: str,
+    notes: str,
+    audience: str,
+) -> None:
+    """Build a marketing case study from project data."""
+    from kruppai.skills.case_study import CaseStudySkill
+
+    settings: Settings = ctx.obj["settings"]
+    skill = _build_skill(CaseStudySkill, settings)
+    try:
+        with console.status("[bold]Building case study..."):
+            result = skill.execute(
+                project=project, notes=notes, audience=audience,
+            )
+        console.print(f"\n[green]Case study generated:[/green] {result.output_path}")
+        console.print(
+            f"[dim]Cost: ${result.cost_cents / 100:.2f} | "
+            f"Tokens: {result.input_tokens:,} in / {result.output_tokens:,} out | "
+            f"Time: {result.duration_ms / 1000:.1f}s[/dim]"
+        )
+    except ValueError as e:
+        console.print(f"[red]Validation error:[/red] {e}")
+    except Exception as e:
+        console.print(f"[red]Error building case study:[/red] {e}")
+
+
+@cli.command("incident-report")
+@click.option("--project", "-p", required=True, help="Project code")
+@click.option("--description", "-d", required=True, help="Description of the incident")
+@click.option(
+    "--type", "-t", "type",
+    required=True,
+    type=click.Choice(
+        ["near_miss", "first_aid", "recordable", "lost_time", "property_damage", "environmental"],
+        case_sensitive=False,
+    ),
+    help="Incident type",
+)
+@click.option("--date", default=None, help="Incident date (YYYY-MM-DD, defaults to today)")
+@click.option("--time", "time", default=None, help="Incident time (HH:MM)")
+@click.pass_context
+def incident_report_cmd(
+    ctx: click.Context,
+    project: str,
+    description: str,
+    type: str,
+    date: str | None,
+    time: str | None,
+) -> None:
+    """Document a safety incident or near miss."""
+    from kruppai.skills.incident_report import IncidentReportSkill
+
+    settings: Settings = ctx.obj["settings"]
+    skill = _build_skill(IncidentReportSkill, settings)
+    try:
+        with console.status("[bold]Generating incident report..."):
+            result = skill.execute(
+                project=project, description=description,
+                type=type, date=date, time=time,
+            )
+        console.print(f"\n[green]Incident report generated:[/green] {result.output_path}")
+        console.print(
+            f"[dim]Cost: ${result.cost_cents / 100:.2f} | "
+            f"Tokens: {result.input_tokens:,} in / {result.output_tokens:,} out | "
+            f"Time: {result.duration_ms / 1000:.1f}s[/dim]"
+        )
+    except ValueError as e:
+        console.print(f"[red]Validation error:[/red] {e}")
+    except Exception as e:
+        console.print(f"[red]Error generating incident report:[/red] {e}")
 
 
 if __name__ == "__main__":

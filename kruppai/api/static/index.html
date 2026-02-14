@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KruppAI - Construction Document Generator</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- ================================================================== -->
+    <!-- HEADER                                                             -->
+    <!-- ================================================================== -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo">
+                <span class="logo-icon">K</span>
+                <span class="logo-text">KruppAI</span>
+            </div>
+            <span class="tagline">Construction Document Generator</span>
+        </div>
+        <div class="header-right">
+            <span class="cost-badge" id="headerCostBadge" title="Today's API cost">$0.00 today</span>
+        </div>
+    </header>
+
+    <!-- ================================================================== -->
+    <!-- NAVIGATION                                                         -->
+    <!-- ================================================================== -->
+    <nav class="app-nav">
+        <button class="nav-btn active" data-view="dashboard">
+            <span class="nav-icon">&#9632;</span>
+            Dashboard
+        </button>
+        <button class="nav-btn" data-view="skills">
+            <span class="nav-icon">&#9881;</span>
+            Skills
+        </button>
+        <button class="nav-btn" data-view="documents">
+            <span class="nav-icon">&#128196;</span>
+            Documents
+        </button>
+        <button class="nav-btn" data-view="projects">
+            <span class="nav-icon">&#127959;</span>
+            Projects
+        </button>
+    </nav>
+
+    <!-- ================================================================== -->
+    <!-- MAIN CONTENT AREA                                                  -->
+    <!-- ================================================================== -->
+    <main class="app-main">
+
+        <!-- ============================================================ -->
+        <!-- DASHBOARD VIEW                                               -->
+        <!-- ============================================================ -->
+        <section id="view-dashboard" class="view active">
+            <h1 class="view-title">Dashboard</h1>
+
+            <!-- Cost tracker -->
+            <div class="dashboard-cards">
+                <div class="dash-card cost-card">
+                    <h3>Today's Usage</h3>
+                    <div class="cost-bar-wrap">
+                        <div class="cost-bar" id="dailyCostBar">
+                            <div class="cost-bar-fill" id="dailyCostFill"></div>
+                        </div>
+                        <span class="cost-label" id="dailyCostLabel">$0.00 / $5.00</span>
+                    </div>
+                    <div class="cost-bar-wrap" style="margin-top: 12px;">
+                        <h3>This Month</h3>
+                        <div class="cost-bar" id="monthlyCostBar">
+                            <div class="cost-bar-fill monthly" id="monthlyCostFill"></div>
+                        </div>
+                        <span class="cost-label" id="monthlyCostLabel">$0.00 / $100.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick actions -->
+            <h2 class="section-title">Quick Actions</h2>
+            <div class="quick-actions" id="quickActions">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Recent documents -->
+            <h2 class="section-title">Recent Documents</h2>
+            <div class="recent-docs" id="recentDocs">
+                <p class="empty-state">No documents generated yet. Use a skill above to get started.</p>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SKILLS VIEW                                                  -->
+        <!-- ============================================================ -->
+        <section id="view-skills" class="view">
+            <h1 class="view-title">Skills</h1>
+            <p class="view-subtitle">Select a skill to generate a construction document.</p>
+
+            <div id="skillsContainer">
+                <!-- Phase groups populated by JS -->
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- DOCUMENTS VIEW                                               -->
+        <!-- ============================================================ -->
+        <section id="view-documents" class="view">
+            <h1 class="view-title">Documents</h1>
+            <p class="view-subtitle">All generated documents.</p>
+
+            <div class="table-wrap">
+                <table class="data-table" id="documentsTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Skill</th>
+                            <th>File Name</th>
+                            <th>Type</th>
+                            <th>Download</th>
+                        </tr>
+                    </thead>
+                    <tbody id="documentsBody">
+                        <tr>
+                            <td colspan="5" class="empty-state">No documents found.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PROJECTS VIEW                                                -->
+        <!-- ============================================================ -->
+        <section id="view-projects" class="view">
+            <h1 class="view-title">Projects</h1>
+            <p class="view-subtitle">Manage your construction projects.</p>
+
+            <!-- Add project form -->
+            <div class="add-project-card">
+                <h3>Add New Project</h3>
+                <form id="addProjectForm" class="project-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="projCode">Project Code</label>
+                            <input type="text" id="projCode" name="project_code" placeholder="e.g. KRUPP-2026-001" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="projName">Project Name</label>
+                            <input type="text" id="projName" name="name" placeholder="e.g. Downtown Office Tower" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="projClient">Client Name</label>
+                            <input type="text" id="projClient" name="client_name" placeholder="e.g. Acme Development Corp">
+                        </div>
+                        <div class="form-group">
+                            <label for="projType">Project Type</label>
+                            <select id="projType" name="project_type">
+                                <option value="commercial">Commercial</option>
+                                <option value="residential">Residential</option>
+                                <option value="industrial">Industrial</option>
+                                <option value="infrastructure">Infrastructure</option>
+                                <option value="renovation">Renovation</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="projAddress">Address</label>
+                            <input type="text" id="projAddress" name="address" placeholder="e.g. 123 Main St, Denver, CO 80202">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg">Add Project</button>
+                </form>
+            </div>
+
+            <!-- Project list -->
+            <h2 class="section-title" style="margin-top: 32px;">Active Projects</h2>
+            <div id="projectsList" class="projects-grid">
+                <p class="empty-state">No projects found. Add one above.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- ================================================================== -->
+    <!-- SKILL EXECUTION MODAL                                              -->
+    <!-- ================================================================== -->
+    <div class="modal-overlay" id="skillModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">Generate Document</h2>
+                <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic form injected by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- TOAST / NOTIFICATION                                               -->
+    <!-- ================================================================== -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

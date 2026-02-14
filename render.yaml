@@ -1,0 +1,42 @@
+# =============================================================================
+# Render Blueprint — One-Click Deployment for KruppAI
+# https://render.com/docs/blueprint-spec
+#
+# Deploy: Click "New" → "Blueprint" in Render dashboard, connect this repo.
+# Or use: render blueprint launch
+# =============================================================================
+
+services:
+  - type: web
+    name: kruppai
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: oregon
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false  # Must be set manually in Render dashboard
+      - key: KRUPPAI_DB_PATH
+        value: /data/kruppai.db
+      - key: KRUPPAI_OUTPUT_DIR
+        value: /data/output
+      - key: KRUPPAI_LOG_LEVEL
+        value: INFO
+      - key: OPEN_METEO_ENABLED
+        value: "true"
+      - key: KRUPPAI_DAILY_COST_LIMIT_CENTS
+        value: "5000"
+      - key: KRUPPAI_MONTHLY_COST_LIMIT_CENTS
+        value: "30000"
+      # Uncomment for Supabase production database:
+      # - key: SUPABASE_URL
+      #   sync: false
+      # - key: SUPABASE_KEY
+      #   sync: false
+      # - key: SUPABASE_DB_URL
+      #   sync: false
+    disk:
+      name: kruppai-data
+      mountPath: /data
+      sizeGB: 1

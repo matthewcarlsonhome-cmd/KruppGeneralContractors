@@ -77,22 +77,27 @@ Output: `~/KruppAI-Output/daily_report_KRUPP-2026-001_2026-02-13_001.docx`
 
 Open it. You should see a professional daily report with Krupp branding, structured sections, and weather data auto-populated.
 
-### Step 6: Run Tests to Verify (1 minute)
+### Step 6: Launch the Web Interface
+
+```bash
+uvicorn kruppai.api.main:app --reload
+```
+
+Open http://localhost:8000 in your browser. You'll see the KruppAI dashboard with all 18 skills available in a clean, card-based interface. No CLI knowledge needed.
+
+### Step 7: Run Tests to Verify (1 minute)
 
 ```bash
 pytest tests/ -v -m "not integration"
 ```
 
-All tests should pass. Integration tests (marked `@pytest.mark.integration`) require a real API key and hit the Anthropic API — run them selectively:
-
-```bash
-pytest tests/ -v -m "integration" -k "test_daily_report"
-```
+All tests should pass. Integration tests (marked `@pytest.mark.integration`) require a real API key and hit the Anthropic API — run them selectively.
 
 ### You're Done
 
-You now have a working prototype with 6 Phase 1 skills:
+You now have a working prototype with all 18 skills across 3 phases:
 
+**Phase 1 — Field & Communication**
 | Command | What It Does |
 |---|---|
 | `kruppai daily-report` | Rough field notes → Professional daily report (DOCX) |
@@ -102,209 +107,142 @@ You now have a working prototype with 6 Phase 1 skills:
 | `kruppai safety-talk` | Topic → 5-10 minute safety talk with sign-in sheet (DOCX) |
 | `kruppai punch-list` | Walk-through notes → Organized punch list (DOCX + XLSX) |
 
----
+**Phase 2 — Analysis & Review**
+| Command | What It Does |
+|---|---|
+| `kruppai estimate-review` | XLSX estimate → Benchmarked analysis report (DOCX + XLSX) |
+| `kruppai bid-compare` | Multiple bid files → Side-by-side comparison (DOCX + XLSX) |
+| `kruppai change-order` | Scope change → Formal CO proposal with cost breakdown (DOCX) |
+| `kruppai schedule-analysis` | Schedule file → Variance and critical path analysis (DOCX + XLSX) |
+| `kruppai submittal-status` | Submittal log → Status report with overdue flags (DOCX + XLSX) |
+| `kruppai contract-review` | Contract/insurance → Compliance review with risk flags (DOCX) |
 
-## Part B: Team Rollout Guide
-
-### Preparing for Multiple Users (Single Office)
-
-Since the prototype uses SQLite (a local file), each user gets their own database. For a small team (2-5 users), this is actually fine — each PM manages their own projects.
-
-**Per-user setup:**
-1. Install Python 3.11+ on each machine
-2. Clone the repo
-3. `pip install -e .`
-4. Copy the shared `.env` file (same API key for the firm)
-5. `kruppai init`
-6. Each user adds their own projects
-
-**Shared configuration files:**
-- `knowledge/company_profile.md` — Same for everyone (keep in git)
-- `knowledge/team_bios.md` — Same for everyone (keep in git)
-- `knowledge/writing_standards.md` — Same for everyone (keep in git)
-- `.env` — Shared Anthropic API key, individual paths
-
-### Customizing the Knowledge Base
-
-Before rolling out to the team, customize these files with real Krupp data:
-
-**`knowledge/company_profile.md`:**
-```markdown
-# Krupp General Contractors
-
-## Company Overview
-Krupp General Contractors is a [full-service / specialty] general contractor
-based in [City, State], founded in [year]. We specialize in [project types].
-
-## Capabilities
-- [List core capabilities]
-- [Annual revenue range]
-- [Bonding capacity]
-
-## Differentiators
-- [What makes Krupp different from competitors]
-- [Awards, certifications, unique capabilities]
-```
-
-**`knowledge/team_bios.md`:**
-```markdown
-# Krupp Team
-
-## [Name], [Title]
-[Professional bio — 2-3 paragraphs covering experience, certifications,
-notable projects. This text is used verbatim in proposals.]
-
-## [Name], [Title]
-[Bio]
-```
-
-**`knowledge/writing_standards.md`:**
-```markdown
-# Krupp Writing Standards
-
-## Tone
-- Professional and confident
-- Client communications: warm but formal
-- Internal documents: direct and clear
-- Never use: [words/phrases Krupp avoids]
-
-## Terminology
-- Use "owner" not "client" in contractual documents
-- Use "GC" or "Krupp" not "us" or "we" in formal documents
-- [Industry-specific terminology preferences]
-```
-
-### Training the Team
-
-**For Superintendents (Daily Reports, Safety Talks):**
-1. Show them these two commands:
-   - `kruppai daily-report -p PROJECT-CODE -n "your notes here"`
-   - `kruppai safety-talk -t "topic"`
-2. Show them one generated document side-by-side with what they write manually
-3. That's it. No further training needed.
-
-**For Project Managers (All Phase 1 Skills):**
-1. Walk through each of the 6 commands with their actual project data
-2. Show the `kruppai status` command for cost tracking
-3. Demonstrate the action item carry-forward in meeting minutes
-4. Show how the client update letter uses their project's real data
-
-**Quick Reference Card** (print and laminate for job trailers):
-```
-KRUPPAI QUICK REFERENCE
-========================
-Daily Report:  kruppai daily-report -p [CODE] -n "[notes]"
-RFI:           kruppai rfi -p [CODE] -i "[issue description]"
-Minutes:       kruppai minutes -p [CODE] -t oac -n "[notes]"
-Client Update: kruppai client-update -p [CODE] -n "[notes]"
-Safety Talk:   kruppai safety-talk -t "[topic]"
-Punch List:    kruppai punch-list -p [CODE] -n "[observations]"
-Project List:  kruppai project list
-System Status: kruppai status
-Help:          kruppai --help
-```
+**Phase 3 — Strategic & Institutional**
+| Command | What It Does |
+|---|---|
+| `kruppai proposal` | Opportunity notes → Professional project proposal (DOCX) |
+| `kruppai budget-forecast` | Job cost report → Budget-to-actual variance analysis (DOCX + XLSX) |
+| `kruppai closeout` | Closeout notes → Package checklist with cover letter (DOCX + XLSX) |
+| `kruppai lessons-learned` | Session notes → Structured lessons learned report (DOCX) |
+| `kruppai case-study` | Project highlights → Marketing case study (DOCX) |
+| `kruppai incident-report` | Incident details → Formal report with OSHA assessment (DOCX) |
 
 ---
 
-## Part C: Production Deployment Guide
+## Part B: Web Interface Guide
 
-### When to Go Production
+The web interface is the recommended way for non-technical team members to use KruppAI.
 
-Migrate from prototype to production when:
-- [x] More than 2 users need simultaneous access
-- [x] Web UI is needed (not everyone wants a CLI)
-- [x] Centralized data needed across office
-- [x] Backup/recovery beyond manual file copies needed
+### Accessing the Web UI
 
-### Step 1: Supabase Setup (30 minutes)
+**Local development:**
+```bash
+uvicorn kruppai.api.main:app --reload
+# Open http://localhost:8000
+```
 
-1. Create account at https://supabase.com
-2. Create new project: "KruppAI"
-3. Note your project URL and API keys
-4. Go to SQL Editor, paste and run `schema/init.sql` (PostgreSQL compatible)
-5. Enable Row Level Security on all tables
-6. Create auth users for each team member
+**Production (Render):**
+Access at your Render deployment URL (e.g., `https://kruppai.onrender.com`)
 
-### Step 2: Migrate Existing Data (15 minutes)
+### Web UI Features
+
+1. **Dashboard** — API cost tracking, recent documents, quick action buttons
+2. **Skills** — 18 AI skills organized by phase, each with a simple input form
+3. **Documents** — All generated documents with download links
+4. **Projects** — Project list with status and "Add Project" form
+
+### For Non-Technical Users
+
+The web interface is designed for construction PMs who don't use command lines:
+- Big, clearly labeled buttons
+- Dropdown menus instead of typed inputs where possible
+- File upload areas for drag-and-drop
+- Progress spinners during AI generation
+- One-click document download
+
+---
+
+## Part C: Production Deployment on Render
+
+### One-Click Deploy (Recommended)
+
+KruppAI includes a `render.yaml` Blueprint for one-click deployment.
+
+1. **Push code to GitHub** (if not already done)
+2. **Go to** https://dashboard.render.com
+3. **Click** "New" → "Blueprint"
+4. **Connect** your GitHub repo
+5. **Set environment variables** in the Render dashboard:
+   - `ANTHROPIC_API_KEY` = your Anthropic API key
+6. **Click** "Apply" — Render builds and deploys automatically
+
+The blueprint configures:
+- Docker-based web service with health checks
+- Persistent disk for SQLite database and generated documents
+- All default environment variables
+
+### Manual Render Setup
+
+If you prefer manual configuration:
 
 ```bash
-kruppai migrate --from sqlite --to supabase \
-  --supabase-url "https://xxxxx.supabase.co" \
-  --supabase-key "your-service-role-key"
+# Install Render CLI
+pip install render-cli
+
+# Deploy
+render deploy
 ```
 
-This exports all data from local SQLite and imports into Supabase. Verify:
-```bash
-kruppai migrate --verify
-```
-
-### Step 3: Update Configuration
-
-```env
-# .env (production)
-ANTHROPIC_API_KEY=sk-ant-api03-...
-KRUPPAI_DB_BACKEND=supabase
-SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_KEY=eyJ...
-KRUPPAI_ENVIRONMENT=production
-SENTRY_DSN=https://xxxx@sentry.io/xxxx  # Optional but recommended
-```
-
-### Step 4: Web UI Deployment (Optional)
-
-**Backend (Railway):**
-```bash
-# Install Railway CLI
-npm i -g @railway/cli
-railway init
-railway up
-```
-
-**Frontend (Vercel):**
-```bash
-cd web-ui
-vercel deploy --prod
-```
-
-### Step 5: Docker Deployment (Alternative)
-
+Or use Docker locally first:
 ```bash
 docker build -t kruppai .
 docker run -p 8000:8000 --env-file .env kruppai
 ```
 
-### Step 6: Monitoring Setup
+### Supabase Setup (For Multi-User)
 
-1. **Sentry**: Create project, add DSN to .env
-2. **Cost alerts**: Set `KRUPPAI_DAILY_COST_LIMIT_CENTS=5000` ($50/day)
-3. **Database backups**: Supabase handles automatically (daily for Pro plan)
-4. **Log retention**: Application logs via standard Python logging → file or cloud logging service
+When you need multiple people using KruppAI simultaneously:
 
-### Step 7: Security Hardening
+1. Create account at https://supabase.com
+2. Create new project: "KruppAI"
+3. Go to SQL Editor, paste and run `schema/postgres_init.sql`
+4. Note your project URL and API keys
+5. Set in Render environment:
+   ```
+   SUPABASE_URL=https://xxxxx.supabase.co
+   SUPABASE_KEY=eyJ...
+   SUPABASE_DB_URL=postgresql://postgres:password@db.xxxxx.supabase.co:5432/postgres
+   ```
+6. Run the migration script:
+   ```bash
+   python -m kruppai.core.migrate_to_supabase
+   ```
 
-- [ ] Anthropic API key: Use organization-level key with usage limits
-- [ ] Supabase: Row Level Security enabled on all tables
-- [ ] Auth: Email + password minimum; Microsoft SSO recommended if using M365
-- [ ] Network: Backend API behind HTTPS only
-- [ ] File access: Output directory permissions restricted
-- [ ] Zero data retention: Add `anthropic-beta: zero-data-retention` header in API client
-- [ ] Secrets: Never in git. Use environment variables or secrets manager.
+---
 
-### Step 8: Verify Production
+## Part D: Team Rollout Guide
 
-```bash
-# Run full test suite against production database (read-only tests)
-pytest tests/ -v -m "not integration" --tb=short
+### Customizing the Knowledge Base
 
-# Smoke test: generate a document
-kruppai daily-report -p KRUPP-2026-001 -n "Production smoke test - 10 workers on site, concrete pour complete."
+Before rolling out to the team, customize these files with real Krupp data:
 
-# Check API usage
-kruppai status
+**`knowledge/company_profile.md`** — Company bio, capabilities, differentiators
+**`knowledge/team_bios.md`** — Professional bios for proposals
+**`knowledge/writing_standards.md`** — Tone, terminology preferences
+**`knowledge/safety_standards.md`** — Safety policies and standards
 
-# Check health endpoint (if web UI deployed)
-curl https://your-api.railway.app/api/v1/health
-```
+### Training the Team
+
+**For Superintendents (Daily Reports, Safety Talks):**
+1. Open the web interface
+2. Click "Daily Report" or "Safety Talk"
+3. Fill in the form, click "Generate"
+4. Download the document
+
+**For Project Managers (All Skills):**
+1. Walk through the web interface with their actual project data
+2. Demonstrate the Dashboard for cost tracking
+3. Show how documents auto-populate with project context
 
 ---
 
@@ -314,16 +252,13 @@ curl https://your-api.railway.app/api/v1/health
 |---|---|---|---|
 | `ANTHROPIC_API_KEY` | **Yes** | — | Anthropic API key |
 | `KRUPPAI_DB_PATH` | No | `~/.kruppai/kruppai.db` | SQLite database path |
-| `KRUPPAI_DB_BACKEND` | No | `sqlite` | `sqlite` or `supabase` |
 | `KRUPPAI_OUTPUT_DIR` | No | `~/KruppAI-Output` | Document output directory |
 | `KRUPPAI_DEFAULT_MODEL` | No | `claude-sonnet-4-5-20250929` | Default AI model |
 | `KRUPPAI_LOG_LEVEL` | No | `INFO` | Logging level |
 | `KRUPPAI_DAILY_COST_LIMIT_CENTS` | No | `5000` | Daily API cost cap ($50) |
 | `KRUPPAI_MONTHLY_COST_LIMIT_CENTS` | No | `30000` | Monthly API cost cap ($300) |
-| `KRUPPAI_WEATHER_ENABLED` | No | `true` | Auto-fetch weather for daily reports |
+| `OPEN_METEO_ENABLED` | No | `true` | Auto-fetch weather for daily reports |
 | `SUPABASE_URL` | Production | — | Supabase project URL |
 | `SUPABASE_KEY` | Production | — | Supabase API key |
+| `SUPABASE_DB_URL` | Production | — | PostgreSQL connection string |
 | `SENTRY_DSN` | No | — | Sentry error tracking DSN |
-| `PROCORE_CLIENT_ID` | No | — | Procore OAuth client ID |
-| `PROCORE_CLIENT_SECRET` | No | — | Procore OAuth client secret |
-| `PROCORE_COMPANY_ID` | No | — | Procore company ID |
