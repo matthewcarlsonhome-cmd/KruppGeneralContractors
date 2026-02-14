@@ -448,6 +448,284 @@ async def list_projects(settings: Settings = Depends(get_settings)) -> list[dict
     ]
 
 
+@app.get("/api/v1/projects/{project_code}/stats")
+async def project_stats(
+    project_code: str,
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """Return live project stats for the dashboard command center."""
+    try:
+        with get_db(settings) as conn:
+            # Resolve project_id
+            cursor = conn.execute(
+                "SELECT id, name, address, latitude, longitude "
+                "FROM projects WHERE project_code = ?",
+                (project_code,),
+            )
+            proj = cursor.fetchone()
+            if proj is None:
+                raise HTTPException(status_code=404, detail="Project not found.")
+            pid = proj["id"]
+
+            # Open RFIs
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM rfis "
+                "WHERE project_id = ? AND status IN ('draft', 'submitted')",
+                (pid,),
+            )
+            open_rfis = cursor.fetchone()[0]
+
+            # Overdue RFIs
+            today = dt_date.today().isoformat()
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM rfis "
+                "WHERE project_id = ? AND status = 'submitted' "
+                "AND response_due_date IS NOT NULL AND response_due_date < ?",
+                (pid, today),
+            )
+            overdue_rfis = cursor.fetchone()[0]
+
+            # Pending COs
+            cursor = conn.execute(
+                "SELECT COUNT(*), COALESCE(SUM(total_with_markup_cents), 0) "
+                "FROM change_orders "
+                "WHERE project_id = ? AND status IN ('draft', 'submitted')",
+                (pid,),
+            )
+            co_row = cursor.fetchone()
+            pending_cos = co_row[0]
+            pending_co_cents = co_row[1]
+
+            # Daily report count
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM daily_reports WHERE project_id = ?",
+                (pid,),
+            )
+            daily_report_count = cursor.fetchone()[0]
+
+            # Open action items
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM action_items "
+                "WHERE project_id = ? AND status IN ('open', 'in_progress')",
+                (pid,),
+            )
+            open_action_items = cursor.fetchone()[0]
+
+            # Open punch items
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM punch_items "
+                "WHERE project_id = ? AND status != 'complete'",
+                (pid,),
+            )
+            open_punch_items = cursor.fetchone()[0]
+
+            # Team and sub counts
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM project_team "
+                "WHERE project_id = ? AND removed_date IS NULL",
+                (pid,),
+            )
+            team_count = cursor.fetchone()[0]
+
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM project_subcontractors "
+                "WHERE project_id = ?",
+                (pid,),
+            )
+            sub_count = cursor.fetchone()[0]
+
+            # Last client update
+            cursor = conn.execute(
+                "SELECT created_at FROM generated_documents "
+                "WHERE project_id = ? AND skill_name = 'client_update' "
+                "ORDER BY created_at DESC LIMIT 1",
+                (pid,),
+            )
+            row = cursor.fetchone()
+            last_client_update = row["created_at"] if row else None
+
+            # Next auto-numbers
+            cursor = conn.execute(
+                "SELECT COALESCE(MAX(report_number), 0) + 1 "
+                "FROM daily_reports WHERE project_id = ?",
+                (pid,),
+            )
+            next_daily = cursor.fetchone()[0]
+
+            cursor = conn.execute(
+                "SELECT COALESCE(MAX(rfi_number), 0) + 1 "
+                "FROM rfis WHERE project_id = ?",
+                (pid,),
+            )
+            next_rfi = cursor.fetchone()[0]
+
+            cursor = conn.execute(
+                "SELECT COALESCE(MAX(co_number), 0) + 1 "
+                "FROM change_orders WHERE project_id = ?",
+                (pid,),
+            )
+            next_co = cursor.fetchone()[0]
+
+            cursor = conn.execute(
+                "SELECT COALESCE(MAX(incident_number), 0) + 1 "
+                "FROM incident_reports WHERE project_id = ?",
+                (pid,),
+            )
+            next_incident = cursor.fetchone()[0]
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Database error: {exc}")
+
+    return {
+        "project_code": project_code,
+        "address": proj["address"] or "",
+        "open_rfis": open_rfis,
+        "overdue_rfis": overdue_rfis,
+        "pending_cos": pending_cos,
+        "pending_co_cents": pending_co_cents,
+        "daily_report_count": daily_report_count,
+        "open_action_items": open_action_items,
+        "open_punch_items": open_punch_items,
+        "team_count": team_count,
+        "sub_count": sub_count,
+        "last_client_update": last_client_update,
+        "next_daily_report": next_daily,
+        "next_rfi": next_rfi,
+        "next_co": next_co,
+        "next_incident": next_incident,
+    }
+
+
+@app.get("/api/v1/projects/{project_code}/activity")
+async def project_activity(
+    project_code: str,
+    settings: Settings = Depends(get_settings),
+) -> list[dict]:
+    """Return recent activity feed for a project."""
+    try:
+        with get_db(settings) as conn:
+            cursor = conn.execute(
+                "SELECT id FROM projects WHERE project_code = ?",
+                (project_code,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail="Project not found.")
+            pid = row["id"]
+
+            events: list[dict] = []
+
+            # Recent documents
+            cursor = conn.execute(
+                "SELECT skill_name, file_name, created_at "
+                "FROM generated_documents "
+                "WHERE project_id = ? AND is_current = 1 "
+                "ORDER BY created_at DESC LIMIT 10",
+                (pid,),
+            )
+            for r in cursor.fetchall():
+                events.append({
+                    "date": r["created_at"],
+                    "type": "document",
+                    "skill": r["skill_name"],
+                    "text": f"{r['file_name']} generated",
+                })
+
+            # Recent RFIs
+            cursor = conn.execute(
+                "SELECT rfi_number, subject, status, created_at, "
+                "response_due_date "
+                "FROM rfis WHERE project_id = ? "
+                "ORDER BY created_at DESC LIMIT 5",
+                (pid,),
+            )
+            for r in cursor.fetchall():
+                due = ""
+                if r["response_due_date"] and r["status"] == "submitted":
+                    due = f" (due {r['response_due_date']})"
+                events.append({
+                    "date": r["created_at"],
+                    "type": "rfi",
+                    "text": f"RFI #{r['rfi_number']} {r['status']}{due}: {r['subject']}",
+                })
+
+            # Recent COs
+            cursor = conn.execute(
+                "SELECT co_number, title, status, "
+                "total_with_markup_cents, created_at "
+                "FROM change_orders WHERE project_id = ? "
+                "ORDER BY created_at DESC LIMIT 5",
+                (pid,),
+            )
+            for r in cursor.fetchall():
+                amt = ""
+                if r["total_with_markup_cents"]:
+                    amt = f" (${r['total_with_markup_cents'] / 100:,.0f})"
+                events.append({
+                    "date": r["created_at"],
+                    "type": "co",
+                    "text": f"CO #{r['co_number']} {r['status']}{amt}: {r['title']}",
+                })
+
+            # Recent action items
+            cursor = conn.execute(
+                "SELECT description, assigned_to, status, created_at "
+                "FROM action_items WHERE project_id = ? "
+                "ORDER BY created_at DESC LIMIT 5",
+                (pid,),
+            )
+            for r in cursor.fetchall():
+                events.append({
+                    "date": r["created_at"],
+                    "type": "action",
+                    "text": f"Action item ({r['status']}): {r['description'][:60]}",
+                })
+
+            # Sort all by date desc
+            events.sort(key=lambda e: e.get("date", ""), reverse=True)
+            return events[:20]
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Database error: {exc}")
+
+
+@app.get("/api/v1/documents/all")
+async def all_documents(
+    settings: Settings = Depends(get_settings),
+) -> list[dict]:
+    """Return all documents across all projects (My Documents concept)."""
+    try:
+        with get_db(settings) as conn:
+            cursor = conn.execute(
+                "SELECT gd.id, gd.skill_name, gd.file_name, "
+                "gd.document_type, gd.created_at, gd.project_id, "
+                "p.project_code, p.name as project_name "
+                "FROM generated_documents gd "
+                "LEFT JOIN projects p ON gd.project_id = p.id "
+                "WHERE gd.is_current = 1 "
+                "ORDER BY gd.created_at DESC LIMIT 50"
+            )
+            return [
+                {
+                    "id": r["id"],
+                    "skill_name": r["skill_name"],
+                    "file_name": r["file_name"],
+                    "document_type": r["document_type"],
+                    "created_at": r["created_at"],
+                    "project_code": r["project_code"],
+                    "project_name": r["project_name"],
+                    "download_url": f"/api/v1/documents/{r['id']}/download",
+                }
+                for r in cursor.fetchall()
+            ]
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Database error: {exc}")
+
+
 @app.post("/api/v1/projects", response_model=ProjectResponse)
 async def create_project(
     project: ProjectCreate,
